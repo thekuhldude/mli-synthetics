@@ -270,10 +270,11 @@ class LightingDesignerLLM:
 
             settings = get_settings()
         self.settings = settings
-        self.ollama = ollama or OllamaClient(
-            base_url=settings.ollama_base_url,
-            timeout=settings.ollama_timeout_seconds,
-        )
+        if ollama is None:
+            from mli_synthetics.llm import get_default_client
+
+            ollama = get_default_client(settings)
+        self.ollama = ollama
         self._knowledge_context = knowledge_context
 
     # ------------------------------------------------------------------

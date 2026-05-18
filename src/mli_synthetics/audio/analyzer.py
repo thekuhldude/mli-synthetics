@@ -126,16 +126,13 @@ class SongAnalyzer:
 
     # ------------------------------------------------------------------
     async def _llm_interpret(self, numerical: NumericalFeatures) -> SongAnalysis:
-        from mli_synthetics.llm.ollama_client import OllamaClient
+        from mli_synthetics.llm import get_default_client
         from mli_synthetics.llm.prompts import (
             ANALYZER_SYSTEM_PROMPT,
             ANALYZER_USER_PROMPT_TEMPLATE,
         )
 
-        ollama = self._ollama or OllamaClient(
-            base_url=self.settings.ollama_base_url,
-            timeout=self.settings.ollama_timeout_seconds,
-        )
+        ollama = self._ollama or get_default_client(self.settings)
         features_summary = _format_features_summary(numerical)
         user_prompt = ANALYZER_USER_PROMPT_TEMPLATE.format(
             features_summary=features_summary
