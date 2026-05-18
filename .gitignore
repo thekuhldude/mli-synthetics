@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+src/data/outputs/
+src/data/knowledge_base/*.pdf
+!src/data/knowledge_base/.gitkeep
+*.wav
+*.mp3
+*.flac

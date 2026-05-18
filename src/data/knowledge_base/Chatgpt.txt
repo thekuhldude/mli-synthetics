@@ -1,0 +1,650 @@
+Systematische Anleitung: Bühnenaufbau und Lichtsysteme für KI-generierte Showfiles
+
+Dieses Dokument beschreibt Bühnenaufbau, Lichtpositionierung, räumliche Verhältnisse und technische Strukturen so, dass daraus konsistente synthetische Trainingsdaten für Lichtdesign-KIs erzeugt werden können.
+
+Der Fokus liegt auf:
+
+Räumlichen Beziehungen
+Typischen Bühnenstandards
+Lichtpositionen
+Blickrichtungen
+Layering
+Größenverhältnissen
+Visueller Gewichtung
+Typischen Showstrukturen
+
+Nicht behandelt:
+
+Rigging/Sicherheit
+Brandschutz
+Fluchtwege
+Gesetzliche Vorschriften
+1. Grundprinzip: Eine Bühne ist ein räumliches Koordinatensystem
+
+Eine Bühne ist kein „Raum mit Lampen“, sondern ein:
+
+räumliches Raster
+perspektivisches Bildsystem
+Lichtvolumen
+Fokusraum
+
+Für KI-Training ist entscheidend:
+
+Die Bühne besteht aus 5 Ebenen gleichzeitig:
+Ebene	Funktion
+Architektur	Größe, Form, Höhe
+Performer-Ebene	Wo stehen Menschen
+Licht-Ebene	Woher kommt Licht
+Sicht-Ebene	Was sieht das Publikum
+Bewegungs-Ebene	Wie verändert sich alles über Zeit
+2. Bühnen-Koordinatensystem
+Standard-Richtungen
+
+Immer aus Sicht des Performers:
+
+Begriff	Richtung
+Downstage	Richtung Publikum
+Upstage	Nach hinten
+Stage Left	Links vom Performer
+Stage Right	Rechts vom Performer
+Bühnenachsen
+X-Achse
+
+Links ↔ Rechts
+
+Y-Achse
+
+Vorne ↔ Hinten
+
+Z-Achse
+
+Höhe
+
+3. Typische Bühnen-Proportionen
+
+Sehr wichtig für KI-generierte Layouts.
+
+Kleine Clubbühne
+Breite: 4–8 m
+Tiefe: 3–5 m
+Höhe: 2.5–4 m
+Mittlere Konzertbühne
+Breite: 10–18 m
+Tiefe: 8–14 m
+Höhe: 6–10 m
+Große Festivalbühne
+Breite: 20–40 m
+Tiefe: 15–25 m
+Höhe: 12–25 m
+4. Grundregel der visuellen Balance
+
+Licht muss selten symmetrisch aussehen — aber fast immer symmetrisch gewichtet sein.
+
+Wichtiger Unterschied.
+
+Beispiel:
+
+Links 4 Moving Heads
+Rechts 2 große Washes + LED-Wall
+
+Kann trotzdem visuell balanciert wirken.
+
+KI-Systeme müssen lernen:
+
+Helligkeit ≠ visuelles Gewicht
+Größe ≠ Dominanz
+Bewegung erzeugt Aufmerksamkeit
+Kontrast erzeugt Fokus
+5. Die wichtigsten Bühnenbereiche
+Frontbereich
+
+Nahe Publikum.
+
+Typisch:
+
+Sänger
+Hauptakteure
+Keylight
+Frontwash
+Midstage
+
+Zentrum.
+
+Typisch:
+
+Band
+Hauptshowelemente
+Dynamisches Licht
+Upstage
+
+Hinten.
+
+Typisch:
+
+LED-Walls
+Gegenlicht
+Beam-Layer
+Atmosphärenlicht
+6. Lichtsystem-Grundlagen
+Licht hat 4 Hauptaufgaben
+Aufgabe	Ziel
+Sichtbarkeit	Performer sichtbar machen
+Fokus	Blick lenken
+Atmosphäre	Emotion erzeugen
+Dimension	Tiefe erzeugen
+7. Grundtypen von Licht
+Frontlicht
+
+Position:
+
+Vor der Bühne
+Publikumseite
+Meist 30–55° Winkel
+
+Zweck:
+
+Gesichter sichtbar
+Hauttöne
+Natürlichkeit
+
+Zu viel Frontlicht:
+
+flaches Bild
+keine Tiefe
+Backlight
+
+Von hinten.
+
+Sehr wichtig.
+
+Erzeugt:
+
+Silhouetten
+Separation
+Tiefe
+Volumen
+
+Professionelle Shows bestehen oft zu 50–70 % aus Backlight.
+
+Toplight
+
+Von oben.
+
+Wirkt:
+
+dramatisch
+vertikal
+plastisch
+
+Toplight definiert Körperformen.
+
+Sidelight
+
+Seitlich.
+
+Sehr wichtig für:
+
+Tanz
+Körperkonturen
+Nebelvolumen
+Floorlight
+
+Vom Boden.
+
+Wirkt:
+
+aggressiv
+unnatürlich
+modern
+„groß“
+
+Sehr häufig in EDM und Industrial-Looks.
+
+8. Typische Lichtpositionen
+FOH-Truss (Front of House)
+
+Vor Publikum.
+
+Typisch:
+
+Frontlicht
+Keylight
+Specials
+Fronttruss
+
+Direkt vor Bühne.
+
+Typisch:
+
+Washlights
+Face-Light
+Front-Beams
+Midtruss
+
+Mittig über Bühne.
+
+Typisch:
+
+Wash
+Texturen
+Effekte
+Backtruss
+
+Hinten.
+
+Wichtigste Truss vieler Shows.
+
+Typisch:
+
+Gegenlicht
+Beams
+Silhouetten
+große Looks
+Floor Package
+
+Lampen am Bühnenboden.
+
+Sehr modern.
+
+Erzeugt:
+
+Tiefenlinien
+Beam-Fächer
+vertikale Energie
+9. Grundlogik moderner Lichtdesigns
+
+Professionelle Shows arbeiten fast nie mit „einem Licht“.
+
+Sie arbeiten mit Layern.
+
+10. Licht-Layer
+Layer 1 — Visibility Layer
+
+Performer sichtbar.
+
+Typisch:
+
+Frontwash
+Keylight
+Layer 2 — Depth Layer
+
+Räumlichkeit.
+
+Typisch:
+
+Backlight
+Sidelight
+Haze
+Layer 3 — Energy Layer
+
+Bewegung.
+
+Typisch:
+
+Beams
+FX
+Strobes
+Layer 4 — Atmosphere Layer
+
+Emotion.
+
+Typisch:
+
+Farben
+Gobos
+Texturen
+Dimmerbewegungen
+11. Haze ist fast Pflicht
+
+Eine KI muss verstehen:
+
+Beams existieren visuell nur mit Partikeln in Luft.
+
+Ohne Haze:
+
+Lichtstrahl unsichtbar
+
+Mit Haze:
+
+volumetrische Geometrie sichtbar
+
+Deshalb:
+
+Moderne Shows fast immer mit Haze
+Besonders Beamshows
+12. Beam-Geometrie
+
+Sehr wichtig.
+
+Enge Beams
+aggressiv
+schnell
+technisch
+groß wirkend
+Breite Washes
+weich
+emotional
+atmosphärisch
+Fächer
+
+Mehrere parallele Beams.
+
+Wirken:
+
+groß
+synchron
+„festivalartig“
+Cross-Beams
+
+Überkreuzte Beams.
+
+Erzeugen:
+
+Chaos
+Dynamik
+Dichte
+13. Typische Lampentypen
+Spot Moving Head
+
+Kann:
+
+Gobos
+Iris
+Fokus
+harte Beams
+
+Sehr flexibel.
+
+Wash Moving Head
+
+Breiter Lichtkegel.
+
+Für:
+
+Flächen
+Farblooks
+weiche Übergänge
+Beam Moving Head
+
+Extrem enger Strahl.
+
+Für:
+
+Luftbilder
+Fächer
+große Energie
+Hybrid Fixtures
+
+Kombination aus Spot/Wash/Beam.
+
+Moderne Standards.
+
+Blinder
+
+Sehr helles Frontlicht.
+
+Wirkung:
+
+Publikumseinbindung
+Impact
+musikalische Akzente
+Strobe
+
+Kurze Lichtblitze.
+
+Sehr starke Wirkung bei:
+
+Drops
+Builds
+aggressiven Momenten
+14. Bühnenbild und Licht interagieren
+
+Licht existiert nie isoliert.
+
+Eine KI muss verstehen:
+
+LED-Walls reflektieren Licht
+weiße Bühnen reflektieren stark
+schwarze Bühnen „schlucken“ Licht
+Nebel verstärkt Tiefe
+glänzende Oberflächen erzeugen Specular Highlights
+15. LED-Walls
+
+Moderne Shows oft:
+
+Licht + Video kombiniert
+
+LED-Walls:
+
+Hintergrund
+Lichtquelle
+Farbgeber
+Helligkeitsdominanz
+
+Große LED-Walls reduzieren oft Bedarf an Frontlicht.
+
+16. Blickführung
+
+Lichtdesign ist Aufmerksamkeitssteuerung.
+
+Wichtige Mechanismen:
+
+Mechanismus	Wirkung
+Helligkeit	Blick zieht an
+Bewegung	höchste Aufmerksamkeit
+Kontrast	Fokus
+Farbe	emotionale Kodierung
+Isolation	Wichtigkeit
+Symmetrie	Stabilität
+Asymmetrie	Spannung
+17. Dynamik über Zeit
+
+Showfiles sind zeitliche Systeme.
+
+Eine KI muss verstehen:
+
+Licht ist Bewegung
+Cues sind Zustände
+Übergänge definieren Stil
+18. Typische Übergänge
+Snap
+
+Sofortiger Wechsel.
+
+Aggressiv.
+
+Fade
+
+Weicher Übergang.
+
+Musikalisch.
+
+Chase
+
+Sequenzielle Aktivierung.
+
+Bewegungseindruck.
+
+Sweep
+
+Pan/Tilt-Bewegung über Bühne.
+
+Pulse
+
+Rhythmische Intensitätsänderung.
+
+19. Typische Bühnenlogik moderner Genres
+Rock
+Viel Backlight
+Warmweiß
+Amber
+starke Kontraste
+EDM
+Beams
+Floor Package
+Strobes
+symmetrische Fächer
+Pop
+Frontlicht wichtig
+saubere Gesichter
+Farbwechsel
+Videointegration
+Industrial
+harte Winkel
+weiß/kalt
+Floorlights
+Silhouetten
+Theater
+Fokus auf Sichtbarkeit
+narrative Lichtführung
+wenig sichtbare Technik
+20. Tiefenwahrnehmung
+
+Tiefe entsteht durch:
+
+Faktor	Effekt
+Backlight	Separation
+Haze	Volumen
+Schatten	Form
+unterschiedliche Farbtemperaturen	räumliche Trennung
+verschiedene Intensitäten	Layering
+21. Farblogik
+Warm
+
+Amber, Orange, Rot.
+
+Wirkt:
+
+menschlich
+emotional
+nah
+Kalt
+
+Blau, Cyan.
+
+Wirkt:
+
+technisch
+groß
+distanziert
+Magenta
+
+Modern, künstlich, poppig.
+
+Grün
+
+Spannung, Gefahr, Industrial.
+
+22. Symmetrie vs Asymmetrie
+Symmetrische Designs
+
+Wirken:
+
+groß
+professionell
+kontrolliert
+
+Sehr häufig bei EDM.
+
+Asymmetrische Designs
+
+Wirken:
+
+organisch
+modern
+kreativ
+
+Häufig bei Theater/Experimental.
+
+23. Typische Positionsverhältnisse
+
+Sehr wichtig für synthetische Datensätze.
+
+Frontlicht-Winkel
+
+Typisch:
+
+30–55° von oben
+niemals komplett frontal
+Backtruss-Höhe
+
+Typisch:
+
+1–3 m über Performerhöhe
+Floorlights
+
+Typisch:
+
+0.5–2 m Abstand
+oft symmetrisch
+Beam-Fächer
+
+Typisch:
+
+5–15° Abstand zwischen Strahlen
+24. Häufige professionelle Designregeln
+Regel 1
+
+Nie alles gleichzeitig hell.
+
+Regel 2
+
+Dunkelheit ist Teil des Designs.
+
+Regel 3
+
+Bewegung braucht Ruhephasen.
+
+Regel 4
+
+Kontrast erzeugt Größe.
+
+Regel 5
+
+Wenige starke Ideen > viele schwache Effekte.
+
+25. Typische Fehler schlechter KI-generierter Shows
+Zu viele Farben gleichzeitig
+Keine Blickführung
+Alles dauerhaft aktiv
+Keine Tiefenebenen
+Unrealistische Beamwinkel
+Zu wenig Negativraum
+Fehlende Licht-Hierarchie
+26. Showfiles als Datenmodell
+
+Eine KI sollte Showfiles ungefähr so interpretieren:
+
+Statische Ebene
+Fixture-Positionen
+Typen
+DMX-Profile
+Gruppen
+Dynamische Ebene
+Cues
+Presets
+Effekte
+Timing
+Semantische Ebene
+Stimmung
+Genre
+Energie
+Fokusobjekte
+27. Die wichtigste Erkenntnis
+
+Professionelles Lichtdesign ist nicht:
+
+„viele Lampen“
+
+sondern:
+
+kontrollierte räumliche Aufmerksamkeit.
+
+Die besten Shows erzeugen:
+
+Tiefe
+Fokus
+Rhythmus
+Größenillusion
+Emotion
+visuelle Hierarchie

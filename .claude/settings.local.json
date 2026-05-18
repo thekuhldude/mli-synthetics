@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p src/mli_synthetics/stage src/mli_synthetics/audio src/mli_synthetics/llm src/mli_synthetics/pipeline src/scripts src/data/knowledge_base src/data/outputs tests)",
+      "Bash(mv src/Fixture_explaination.md src/data/knowledge_base/fixture_library.md)",
+      "Bash(mv src/*.pdf src/data/knowledge_base/)",
+      "Bash(mv src/Chatgpt.txt src/data/knowledge_base/)",
+      "Bash(uv sync *)",
+      "Bash(uv run python -c ' *)",
+      "Bash(uv run *)",
+      "Bash(uv pip *)"
+    ]
+  }
+}
