@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """HuggingFace transformers client - Mistral-Nemo 4-bit on GPU.
 
 Class-level singleton: the 12B model loads into VRAM exactly once per
@@ -10,7 +12,6 @@ Activate by setting `USE_HF_CLIENT=true`. The factory in
 `mli_synthetics.llm.get_default_client` then returns an `HFClient`
 instead of the default `OllamaClient`.
 """
-from __future__ import annotations
 
 import asyncio
 import json
