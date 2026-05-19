@@ -36,26 +36,24 @@ logger = get_logger()
 DEFAULT_HF_MODEL = "mistralai/Mistral-Nemo-Instruct-2407"
 
 
-# Module-level singleton. The factory in mli_synthetics.llm builds a
-# new HFClient on every call, which was loading the 12B model into VRAM
-# multiple times on Kaggle and OOM-killing the kernel. The __new__ hook
-# below makes every HFClient() call return the same instance.
-_GLOBAL_CLIENT: "HFClient | None" = None
-
-
 class HFClient:
     """Mirrors `OllamaClient.generate` over a local transformers pipeline.
 
-    Singleton: every constructor call returns the same instance, so the
-    model is loaded into GPU memory exactly once per process.
+    Class-level singleton: `_instance` survives across imports (including
+    importlib.reload of the module) as long as the class object itself
+    survives, so the 12 GB model is loaded into GPU memory exactly once
+    per process even with multiple `HFClient()` calls.
     """
 
+    _instance: "HFClient | None" = None
+    _model: Any = None
+    _tokenizer: Any = None
+    _pipeline: Any = None
+
     def __new__(cls, *args, **kwargs):
-        global _GLOBAL_CLIENT
-        if _GLOBAL_CLIENT is None:
-            _GLOBAL_CLIENT = super().__new__(cls)
-            _GLOBAL_CLIENT._initialized = False
-        return _GLOBAL_CLIENT
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(
         self,
@@ -65,9 +63,10 @@ class HFClient:
         log_dir: Path | None = None,
         **kwargs: Any,  # swallow any extra keyword args
     ):
-        if getattr(self, "_initialized", False):
+        # Already initialized - nothing to do (singleton).
+        if getattr(self, "_ready", False):
             return
-        self._initialized = True
+        self._ready = True
         self.base_url = base_url
         self.timeout = timeout
         self.model_id = model_id or os.environ.get("HF_MODEL_ID", DEFAULT_HF_MODEL)
@@ -77,8 +76,6 @@ class HFClient:
             log_dir = get_settings().outputs_dir / "llm_logs"
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        self._pipeline = None
-        self._tokenizer = None
 
     # ------------------------------------------------------------------
     async def health_check(self) -> bool:
