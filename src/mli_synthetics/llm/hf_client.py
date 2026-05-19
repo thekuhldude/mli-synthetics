@@ -1,17 +1,14 @@
-"""HuggingFace text-generation client - drop-in replacement for OllamaClient.
+"""HuggingFace transformers client - Mistral-Nemo 4-bit on GPU.
 
-Same async interface (`generate`, `health_check`, `list_models`) so the
-designer / analyzer code can use either backend transparently. Loading
-transformers/torch is deferred until the first `generate` call so that
-unit tests and CI without a GPU can still import this module.
+Class-level singleton: the 12B model loads into VRAM exactly once per
+process even if multiple call sites (analyzer + designer + warmup)
+instantiate `HFClient()`. All model state lives on the class object
+(`_instance`, `_pipeline_obj`, `_tokenizer`) so it survives repeated
+constructor calls.
 
-Activate by setting `USE_HF_CLIENT=true` in the environment. The
-`get_default_client` factory in `mli_synthetics.llm` reads that env
-var and returns either an `HFClient` or an `OllamaClient`.
-
-Default model: `mistralai/Mistral-Nemo-Instruct-2407`. On a 16 GB GPU
-(Kaggle T4) you almost certainly need 4-bit quantization - set
-`HF_LOAD_IN_4BIT=true` (default) and have `bitsandbytes` installed.
+Activate by setting `USE_HF_CLIENT=true`. The factory in
+`mli_synthetics.llm.get_default_client` then returns an `HFClient`
+instead of the default `OllamaClient`.
 """
 from __future__ import annotations
 
@@ -37,45 +34,77 @@ DEFAULT_HF_MODEL = "mistralai/Mistral-Nemo-Instruct-2407"
 
 
 class HFClient:
-    """Mirrors `OllamaClient.generate` over a local transformers pipeline.
-
-    Class-level singleton: `_instance` survives across imports (including
-    importlib.reload of the module) as long as the class object itself
-    survives, so the 12 GB model is loaded into GPU memory exactly once
-    per process even with multiple `HFClient()` calls.
-    """
+    """transformers-based singleton client matching `OllamaClient`'s interface."""
 
     _instance: "HFClient | None" = None
-    _model: Any = None
+    _pipeline_obj: Any = None  # class attribute - the transformers pipeline
     _tokenizer: Any = None
-    _pipeline: Any = None
+    _model_id: str | None = None
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(
-        self,
-        base_url: str = "",  # accepted for compat with OllamaClient signature
-        timeout: int = 600,
-        model_id: str | None = None,
-        log_dir: Path | None = None,
-        **kwargs: Any,  # swallow any extra keyword args
-    ):
-        # Already initialized - nothing to do (singleton).
-        if getattr(self, "_ready", False):
-            return
-        self._ready = True
-        self.base_url = base_url
-        self.timeout = timeout
-        self.model_id = model_id or os.environ.get("HF_MODEL_ID", DEFAULT_HF_MODEL)
-        if log_dir is None:
-            from mli_synthetics.settings import get_settings
+    def __init__(self, *args, **kwargs):
+        # Lazy: the model loads on first generate() call via _load().
+        # Doing nothing here makes the singleton trivially safe to
+        # re-construct from any call site.
+        pass
 
-            log_dir = get_settings().outputs_dir / "llm_logs"
-        self.log_dir = Path(log_dir)
-        self.log_dir.mkdir(parents=True, exist_ok=True)
+    # ------------------------------------------------------------------
+    @classmethod
+    def _load(cls) -> None:
+        """Load the model + tokenizer once into class attributes."""
+        if cls._pipeline_obj is not None:
+            return
+        try:
+            import torch
+            from transformers import (
+                AutoModelForCausalLM,
+                AutoTokenizer,
+                BitsAndBytesConfig,
+                pipeline,
+            )
+        except ImportError as exc:
+            raise OllamaConnectionError(
+                "HFClient requires transformers + torch + bitsandbytes. "
+                "Install with: pip install transformers torch accelerate bitsandbytes"
+            ) from exc
+
+        model_id = os.environ.get("HF_MODEL_ID", DEFAULT_HF_MODEL)
+        cls._model_id = model_id
+
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16,
+            bnb_4bit_use_double_quant=True,
+        )
+
+        logger.info("HFClient: loading {} (4-bit nf4, fp16 compute)", model_id)
+        try:
+            cls._tokenizer = AutoTokenizer.from_pretrained(model_id)
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                quantization_config=bnb_config,
+                device_map="auto",
+                torch_dtype=torch.float16,
+            )
+        except Exception as exc:  # noqa: BLE001
+            msg = str(exc)
+            if "404" in msg or "not found" in msg.lower():
+                raise OllamaModelNotFoundError(
+                    f"HF model '{model_id}' not accessible. "
+                    "Check the model id and your HuggingFace token."
+                ) from exc
+            raise OllamaConnectionError(f"HF model load failed: {exc}") from exc
+
+        cls._pipeline_obj = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=cls._tokenizer,
+        )
 
     # ------------------------------------------------------------------
     async def health_check(self) -> bool:
@@ -84,118 +113,60 @@ class HFClient:
             import transformers  # noqa: F401
 
             return True
-        except ImportError as exc:
-            logger.warning("HFClient health_check: missing deps ({})", exc)
+        except ImportError:
             return False
 
     async def list_models(self) -> list[str]:
-        return [self.model_id]
-
-    # ------------------------------------------------------------------
-    def _load(self) -> None:
-        if self._pipeline is not None:
-            return
-        try:
-            import torch
-            from transformers import (
-                AutoModelForCausalLM,
-                AutoTokenizer,
-                pipeline,
-            )
-        except ImportError as exc:
-            raise OllamaConnectionError(
-                "HFClient requires `transformers` and `torch`. "
-                "Install with: pip install transformers torch accelerate"
-            ) from exc
-
-        load_4bit = os.environ.get("HF_LOAD_IN_4BIT", "true").lower() in {
-            "1", "true", "yes",
-        }
-        gpu = torch.cuda.is_available()
-
-        model_kwargs: dict[str, Any] = {}
-        if gpu:
-            model_kwargs["device_map"] = "auto"
-            if load_4bit:
-                try:
-                    from transformers import BitsAndBytesConfig
-
-                    model_kwargs["quantization_config"] = BitsAndBytesConfig(
-                        load_in_4bit=True,
-                        bnb_4bit_compute_dtype=torch.bfloat16,
-                        bnb_4bit_quant_type="nf4",
-                        bnb_4bit_use_double_quant=True,
-                    )
-                    logger.info("HFClient: loading {} in 4-bit on GPU", self.model_id)
-                except ImportError:
-                    logger.warning(
-                        "bitsandbytes not installed; falling back to bfloat16. "
-                        "On T4 (16GB) Mistral-Nemo will OOM - install bitsandbytes."
-                    )
-                    model_kwargs["torch_dtype"] = torch.bfloat16
-            else:
-                model_kwargs["torch_dtype"] = torch.bfloat16
-                logger.info("HFClient: loading {} in bfloat16 on GPU", self.model_id)
-        else:
-            logger.warning(
-                "HFClient: no GPU detected, falling back to CPU (will be very slow)"
-            )
-
-        try:
-            self._tokenizer = AutoTokenizer.from_pretrained(self.model_id)
-            model = AutoModelForCausalLM.from_pretrained(self.model_id, **model_kwargs)
-        except Exception as exc:  # noqa: BLE001
-            msg = str(exc)
-            if "404" in msg or "not found" in msg.lower():
-                raise OllamaModelNotFoundError(
-                    f"HF model '{self.model_id}' not found or not accessible. "
-                    "Check the model id and your HuggingFace token."
-                ) from exc
-            raise OllamaConnectionError(f"HF model load failed: {exc}") from exc
-
-        self._pipeline = pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=self._tokenizer,
-        )
+        return [type(self)._model_id or DEFAULT_HF_MODEL]
 
     # ------------------------------------------------------------------
     async def generate(
         self,
-        model: str,
-        prompt: str,
+        model: str | None = None,
+        prompt: str = "",
         system: str | None = None,
+        messages: list[dict] | None = None,
         temperature: float = 0.7,
-        max_tokens: int = 2000,
+        max_tokens: int = 1500,
         json_mode: bool = False,
+        **kwargs: Any,
     ) -> str:
-        # `model` kwarg from the call sites refers to the Ollama tag; we
-        # ignore it - the HFClient is bound to a single model_id at init.
-        del model
+        del model  # bound model is fixed at class level
 
-        if json_mode and system is not None:
-            system = (
-                system.rstrip()
+        sys_text = system if system is not None else kwargs.get("system", "")
+        sys_text = (sys_text or "").rstrip()
+        if json_mode:
+            sys_text = (
+                sys_text
                 + "\n\nRespond with ONLY valid JSON, no markdown, no commentary."
-            )
-        elif json_mode:
-            system = "Respond with ONLY valid JSON, no markdown, no commentary."
+            ).strip()
 
-        messages: list[dict[str, str]] = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
+        user_text = prompt
+        if not user_text and messages:
+            for m in messages:
+                if m.get("role") == "user":
+                    user_text = m.get("content", "")
+                    break
 
+        chat_messages: list[dict[str, str]] = []
+        if sys_text:
+            chat_messages.append({"role": "system", "content": sys_text})
+        chat_messages.append({"role": "user", "content": user_text})
+
+        timeout = float(kwargs.get("timeout", 900))
         loop = asyncio.get_event_loop()
+        # Trigger the load up front so the executor task doesn't get
+        # cancelled mid-load by `asyncio.wait_for`.
+        HFClient._load()
         try:
             raw = await asyncio.wait_for(
                 loop.run_in_executor(
                     None,
                     lambda: self._generate_sync(
-                        messages, temperature, max_tokens
+                        chat_messages, temperature, max_tokens
                     ),
                 ),
-                timeout=float(self.timeout),
+                timeout=timeout,
             )
         except asyncio.TimeoutError as exc:
             raise OllamaConnectionError(
@@ -207,51 +178,55 @@ class HFClient:
             cleaned = _extract_json(cleaned)
             try:
                 json.loads(cleaned)
-            except json.JSONDecodeError as exc:
-                # Single retry at lower temperature
-                logger.warning("HFClient: JSON parse failed, retrying once")
+            except json.JSONDecodeError:
+                logger.warning(
+                    "HFClient: JSON parse failed, retrying once at lower temp"
+                )
                 try:
-                    raw_retry = await asyncio.wait_for(
+                    raw2 = await asyncio.wait_for(
                         loop.run_in_executor(
                             None,
                             lambda: self._generate_sync(
-                                messages,
+                                chat_messages,
                                 max(0.1, temperature - 0.3),
                                 max_tokens,
                             ),
                         ),
-                        timeout=float(self.timeout),
+                        timeout=timeout,
                     )
                 except asyncio.TimeoutError as exc2:
                     raise OllamaConnectionError(
                         "LLM took too long. Try a smaller model or split the input."
                     ) from exc2
-                cleaned = _extract_json(raw_retry.strip())
+                cleaned = _extract_json(raw2.strip())
                 try:
                     json.loads(cleaned)
                 except json.JSONDecodeError as exc3:
                     raise OllamaInvalidJSONError(
-                        f"HF model {self.model_id} did not return valid JSON "
-                        f"after retry: {exc3}"
-                    ) from exc
-
-        self._log_exchange(messages, cleaned, temperature, max_tokens)
+                        f"Model did not return valid JSON after retry: {exc3}"
+                    ) from exc3
+        self._log_exchange(chat_messages, cleaned, temperature, max_tokens)
         return cleaned
 
     # ------------------------------------------------------------------
     def _generate_sync(
-        self, messages: list[dict[str, str]], temperature: float, max_tokens: int
+        self,
+        messages: list[dict],
+        temperature: float,
+        max_tokens: int,
     ) -> str:
-        self._load()
-        assert self._tokenizer is not None and self._pipeline is not None
+        cls = type(self)
+        tokenizer = cls._tokenizer
+        pipe = cls._pipeline_obj
+        assert tokenizer is not None and pipe is not None
 
-        text = self._tokenizer.apply_chat_template(
+        text = tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
         kwargs: dict[str, Any] = {
             "max_new_tokens": max_tokens,
             "return_full_text": False,
-            "pad_token_id": self._tokenizer.eos_token_id,
+            "pad_token_id": tokenizer.eos_token_id,
         }
         if temperature > 0:
             kwargs["temperature"] = temperature
@@ -259,7 +234,7 @@ class HFClient:
         else:
             kwargs["do_sample"] = False
 
-        result = self._pipeline(text, **kwargs)
+        result = pipe(text, **kwargs)
         if isinstance(result, list) and result:
             return str(result[0].get("generated_text", ""))
         return str(result)
@@ -273,13 +248,17 @@ class HFClient:
         max_tokens: int,
     ) -> None:
         try:
+            from mli_synthetics.settings import get_settings
+
+            log_dir = get_settings().outputs_dir / "llm_logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            safe = re.sub(r"[^A-Za-z0-9_.-]", "_", self.model_id)
-            path = self.log_dir / f"{stamp}_{safe}.json"
+            safe = re.sub(r"[^A-Za-z0-9_.-]", "_", type(self)._model_id or "model")
+            path = log_dir / f"{stamp}_{safe}.json"
             payload = {
                 "timestamp": datetime.now().isoformat(),
                 "backend": "hf",
-                "model": self.model_id,
+                "model": type(self)._model_id,
                 "request": {
                     "system": next(
                         (m["content"] for m in messages if m["role"] == "system"),
@@ -302,7 +281,6 @@ class HFClient:
 
 # ---------------------------------------------------------------------------
 def _extract_json(text: str) -> str:
-    """Strip markdown fences and prose surrounding a JSON object."""
     fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
     if fence:
         text = fence.group(1).strip()
@@ -313,7 +291,6 @@ def _extract_json(text: str) -> str:
     return text
 
 
-# Re-export errors so import-side code stays clean
 __all__ = [
     "HFClient",
     "DEFAULT_HF_MODEL",
