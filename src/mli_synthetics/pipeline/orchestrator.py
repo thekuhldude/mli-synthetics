@@ -75,6 +75,7 @@ class Phase1Pipeline:
         gen = StageGenerator(
             min_fixtures=self.settings.min_fixtures,
             max_fixtures=self.settings.max_fixtures,
+            max_fixtures_total=self.settings.max_fixtures_total,
         )
         layout = gen.generate(target_genre=genre, venue_size=venue)
         timings["stage"] = time.perf_counter() - t0

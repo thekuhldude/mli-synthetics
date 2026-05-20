@@ -102,9 +102,36 @@ class GroqClient:
                 max_tokens=max_tokens,
             )
         except Exception as exc:  # noqa: BLE001
-            msg = str(exc)
-            low = msg.lower()
-            if "404" in msg or "not_found" in low or "does not exist" in low:
+            err = str(exc)
+            low = err.lower()
+            status = getattr(exc, "status_code", None) or getattr(
+                getattr(exc, "response", None), "status_code", None
+            )
+            # 413 Request Entity Too Large - common on the Groq free tier
+            # when the system prompt + knowledge base + chunk are oversized.
+            if (
+                status == 413
+                or " 413" in err
+                or "request_too_large" in low
+                or "too large" in low
+                or "entity too large" in low
+            ):
+                total_chars = sum(len(m.get("content", "")) for m in msg_list)
+                approx_tokens = total_chars // 4
+                logger.error(
+                    "Groq 413: request too large (~{} tokens, {} chars across {} messages). "
+                    "Shorten the prompt or split the chunk further.",
+                    approx_tokens,
+                    total_chars,
+                    len(msg_list),
+                )
+                raise OllamaConnectionError(
+                    f"Groq returned 413 (request too large): "
+                    f"~{approx_tokens} tokens estimated. "
+                    "Shorten the system prompt, reduce stage size, or split "
+                    "the song into shorter chunks."
+                ) from exc
+            if "404" in err or "not_found" in low or "does not exist" in low:
                 raise OllamaModelNotFoundError(
                     f"Groq model '{model or self.model}' not found: {exc}"
                 ) from exc

@@ -64,11 +64,14 @@ class StageGenerator:
         seed: int | None = None,
         min_fixtures: int = 8,
         max_fixtures: int = 80,
+        max_fixtures_total: int = 20,
     ):
         self.library = library or FixtureLibrary.load()
         self.rng = random.Random(seed)
         self.min_fixtures = min_fixtures
         self.max_fixtures = max_fixtures
+        # Hard ceiling regardless of venue size; allocation scales down.
+        self.max_fixtures_total = max_fixtures_total
 
     # ------------------------------------------------------------------
     def generate(
@@ -86,6 +89,12 @@ class StageGenerator:
 
         fixture_target = self.rng.randint(*spec.fixture_range)
         fixture_target = max(self.min_fixtures, min(self.max_fixtures, fixture_target))
+        # Hard cap: never exceed max_fixtures_total. Allocation ratios in
+        # _allocate_counts scale down proportionally to fit this budget.
+        # Reserve one slot for a potential auto-injected hazer.
+        hazer_reserve = 1 if fixture_target >= self.max_fixtures_total else 0
+        fixture_target = min(fixture_target, self.max_fixtures_total - hazer_reserve)
+        fixture_target = max(self.min_fixtures, fixture_target)
 
         distribution = self.library.genre_distribution(genre)
         counts = self._allocate_counts(distribution, fixture_target)
@@ -103,9 +112,30 @@ class StageGenerator:
         has_beam_like = any(f.category in beam_like for f in fixtures)
         has_hazer = any(f.category == FixtureCategory.HAZER for f in fixtures)
         if has_beam_like and not has_hazer:
+            # If we're already at the cap, drop the largest category by one
+            # to make room for the hazer.
+            if len(fixtures) >= self.max_fixtures_total:
+                counts: dict[FixtureCategory, int] = {}
+                for f in fixtures:
+                    counts[f.category] = counts.get(f.category, 0) + 1
+                if counts:
+                    largest_cat = max(counts, key=lambda c: counts[c])
+                    for i in range(len(fixtures) - 1, -1, -1):
+                        if fixtures[i].category == largest_cat:
+                            fixtures.pop(i)
+                            break
             fixtures.extend(
                 self._place_fixtures(FixtureCategory.HAZER, 1, width, depth, height)
             )
+
+        # Hard ceiling safety net - never exceed max_fixtures_total.
+        if len(fixtures) > self.max_fixtures_total:
+            logger.warning(
+                "Trimming stage from {} to max_fixtures_total={}",
+                len(fixtures),
+                self.max_fixtures_total,
+            )
+            fixtures = fixtures[: self.max_fixtures_total]
 
         if not fixtures:
             raise StageGenerationError("Generated stage has zero fixtures")

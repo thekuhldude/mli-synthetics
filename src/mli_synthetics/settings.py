@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Stage generation
     min_fixtures: int = 8
     max_fixtures: int = 80
+    # Hard ceiling on total fixtures per stage, regardless of venue size.
+    # Allocation ratios are scaled proportionally to fit this budget.
+    max_fixtures_total: int = 20
     # LLM input cap - stages with more fixtures are grouped into zones
     max_fixtures_for_llm: int = 12
 

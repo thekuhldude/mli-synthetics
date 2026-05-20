@@ -427,8 +427,10 @@ class LightingDesignerLLM:
         max_cues = max(min_cues + 1, int(chunk_duration // 1))
 
         user_prompt = DESIGNER_CHUNK_USER_PROMPT_TEMPLATE.format(
-            stage_json=json.dumps(stage_view, indent=2),
-            song_analysis_json=json.dumps(song_analysis.model_dump(), indent=2),
+            stage_json=json.dumps(_slim_stage_view(stage_view), indent=2),
+            song_analysis_json=json.dumps(
+                _slim_song_analysis(song_analysis), indent=2
+            ),
             chunk_start_s=round(chunk_start_s, 2),
             chunk_end_s=round(chunk_end_s, 2),
             chunk_duration_s=round(chunk_duration, 2),
@@ -623,8 +625,10 @@ class LightingDesignerLLM:
         max_cues = max(min_cues + 1, int(chunk_duration // 1))
 
         user_prompt = DESIGNER_CHUNK_USER_PROMPT_TEMPLATE.format(
-            stage_json=json.dumps(sub_view, indent=2),
-            song_analysis_json=json.dumps(song_analysis.model_dump(), indent=2),
+            stage_json=json.dumps(_slim_stage_view(sub_view), indent=2),
+            song_analysis_json=json.dumps(
+                _slim_song_analysis(song_analysis), indent=2
+            ),
             chunk_start_s=round(chunk_start_s, 2),
             chunk_end_s=round(chunk_end_s, 2),
             chunk_duration_s=round(chunk_duration, 2),
@@ -949,6 +953,47 @@ def _merge_cues_by_time(cues: list[Cue], tolerance_s: float = 0.5) -> list[Cue]:
         else:
             merged.append(c)
     return merged
+
+
+_SLIM_FIXTURE_KEYS = {"fixture_id", "category", "position", "count", "note"}
+
+
+def _slim_stage_view(stage_view: dict) -> dict:
+    """Strip coordinates and bulk metadata from the stage view that goes
+    into the user prompt. Keeps the LLM input under the Groq free-tier
+    8K-token budget while preserving everything the model needs to plan
+    cues (which fixture / zone, what type, where on stage).
+    """
+    fixtures = stage_view.get("fixtures") or []
+    return {
+        "venue_size": stage_view.get("venue_size"),
+        "zoning_applied": stage_view.get("zoning_applied", False),
+        "fixtures": [
+            {k: f[k] for k in _SLIM_FIXTURE_KEYS if k in f} for f in fixtures
+        ],
+    }
+
+
+def _slim_song_analysis(song_analysis: SongAnalysis) -> dict:
+    """Drop mood / key / lighting hints from the analysis JSON sent to the
+    LLM - we keep only section structure (label / start / end / energy)
+    plus the overall duration. The other fields are useful prose but they
+    inflate the prompt without changing the cue list shape.
+    """
+    return {
+        "duration_s": (
+            round(song_analysis.duration_s, 2) if song_analysis.duration_s else None
+        ),
+        "structure": [
+            {
+                "start_s": round(s.start_s, 2),
+                "end_s": round(s.end_s, 2),
+                "label": s.label,
+                "energy": s.energy,
+            }
+            for s in song_analysis.structure
+        ],
+    }
 
 
 def _default_state(fixture_id: str) -> FixtureState:
