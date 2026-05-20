@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.1-70b-versatile"
     use_groq: bool = False
 
+    # Phase 2 renderer (auto-generate preview MP4 after design step)
+    auto_render: bool = False
+    render_fps: int = 30
+
 
 _cached_settings: Settings | None = None
 

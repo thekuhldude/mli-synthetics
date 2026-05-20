@@ -95,6 +95,30 @@ class Phase1Pipeline:
             json.dumps(cue_list.model_dump(), indent=2), encoding="utf-8"
         )
 
+        # 4b. Optional Phase 2 render
+        preview_path: Path | None = None
+        if getattr(self.settings, "auto_render", False):
+            t0 = time.perf_counter()
+            try:
+                from mli_synthetics.renderer.grid_renderer import GridRenderer
+
+                renderer = GridRenderer(
+                    stage_layout=layout,
+                    cue_list=cue_list,
+                    fps=getattr(self.settings, "render_fps", 30),
+                )
+                preview_path = renderer.render_to_video(
+                    output_video=output_dir / "preview.mp4",
+                    duration_s=analysis_result.numerical.duration_s,
+                    audio_path=audio_path,
+                )
+                timings["render"] = time.perf_counter() - t0
+            except Exception as exc:  # noqa: BLE001
+                # Render failures should never kill the pipeline - the
+                # cue_list.json + stage_layout.json are still valuable.
+                logger.error("Auto-render failed: {}", exc)
+                timings["render_failed"] = time.perf_counter() - t0
+
         # 5. Summary
         summary = {
             "audio": str(audio_path),
@@ -122,6 +146,8 @@ class Phase1Pipeline:
             },
             "timings_s": {k: round(v, 2) for k, v in timings.items()},
         }
+        if preview_path is not None:
+            summary["preview_path"] = str(preview_path)
         (output_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
         (output_dir / "summary.md").write_text(_render_summary_md(summary), encoding="utf-8")
         return summary
