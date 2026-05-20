@@ -142,6 +142,9 @@ class GroqClient:
 
         if json_mode:
             raw = _extract_json(raw)
+            # Groq truncates JSON mid-stream more often than other backends -
+            # try to salvage the last fully-closed cue before giving up.
+            raw = _repair_truncated_json(raw)
             try:
                 json.loads(raw)
             except json.JSONDecodeError as exc:
@@ -210,6 +213,105 @@ def _extract_json(text: str) -> str:
     if first != -1 and last != -1 and last > first:
         return text[first : last + 1]
     return text
+
+
+def _repair_truncated_json(text: str) -> str:
+    """Salvage a truncated JSON cue-list response.
+
+    Strategy: if the input already parses, return it. Otherwise scan
+    forward tracking brace depth and remember the position of the last
+    `}` that closed a top-level child of `cues` (i.e. depth went 2 -> 1).
+    Cut after that position and append the missing closers needed to
+    balance brackets and braces.
+
+    Returns the repaired string on success, or the original text
+    untouched if repair fails (the caller's json.loads will then raise
+    cleanly).
+    """
+    text = text.strip()
+    start = text.find("{")
+    if start == -1:
+        return text
+
+    snippet = text[start:]
+    try:
+        json.loads(snippet)
+        return snippet
+    except json.JSONDecodeError:
+        pass
+
+    # Walk the snippet, tracking brace depth. A `}` that brings depth
+    # back to 1 closes a cue object inside the outer wrapper.
+    depth = 0
+    last_valid_pos = -1
+    in_string = False
+    escape = False
+    for i, ch in enumerate(snippet):
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 1:
+                last_valid_pos = i
+
+    if last_valid_pos == -1:
+        return text
+
+    # Count UNCLOSED brackets and braces at the truncation point, ignoring
+    # any inside string literals (raw .count() would miscount on cues
+    # whose `description` contains a literal `{`, `}`, `[`, or `]`).
+    open_braces = 0
+    open_brackets = 0
+    in_string = False
+    escape = False
+    for ch in snippet[: last_valid_pos + 1]:
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            open_braces += 1
+        elif ch == "}":
+            open_braces -= 1
+        elif ch == "[":
+            open_brackets += 1
+        elif ch == "]":
+            open_brackets -= 1
+
+    repaired = snippet[: last_valid_pos + 1]
+    if open_brackets > 0:
+        repaired += "]" * open_brackets
+    if open_braces > 0:
+        repaired += "}" * open_braces
+
+    try:
+        json.loads(repaired)
+        logger.warning(
+            "GroqClient: repaired truncated JSON ({} -> {} chars)",
+            len(snippet),
+            len(repaired),
+        )
+        return repaired
+    except json.JSONDecodeError:
+        return text
 
 
 __all__ = [

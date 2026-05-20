@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # LLM behavior
     designer_temperature: float = 0.7
     analyzer_temperature: float = 0.3
-    max_tokens_designer: int = 4000
+    max_tokens_designer: int = 2000
     max_tokens_analyzer: int = 1500
 
     # Anthropic API backend
