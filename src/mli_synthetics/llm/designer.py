@@ -271,9 +271,9 @@ class LightingDesignerLLM:
             settings = get_settings()
         self.settings = settings
         if ollama is None:
-            from mli_synthetics.llm import get_default_client
+            from mli_synthetics.llm import get_llm_client
 
-            ollama = get_default_client(settings)
+            ollama = get_llm_client(settings)
         self.ollama = ollama
         self._knowledge_context = knowledge_context
 

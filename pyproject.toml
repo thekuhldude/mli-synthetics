@@ -16,6 +16,8 @@ dependencies = [
     "rich>=13.7",
     "pypdf>=4.0",
     "tenacity>=8.2",
+    "anthropic>=0.40",
+    "groq>=0.9",
 ]
 
 [project.optional-dependencies]

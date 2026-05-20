@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     max_tokens_designer: int = 4000
     max_tokens_analyzer: int = 1500
 
+    # Anthropic API backend
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5-20251001"
+    use_anthropic: bool = False
+
+    # Groq API backend
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.1-70b-versatile"
+    use_groq: bool = False
+
 
 _cached_settings: Settings | None = None
 
